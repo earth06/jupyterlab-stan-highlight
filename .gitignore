@@ -80,3 +80,17 @@ typings/
 #DynamoDB Local files 
 .dynamodb/ 
 .stan/
+.yarn/*
+
+# build output
+lib/
+static/
+jupyterlab4_stan_highlight/labextension/
+tsconfig.tsbuildinfo
+.eslintcache
+.stylelintcache
+dist/
+*.egg-info/
+node_modules/
+__pycache__/
+*.pyc
