@@ -1,13 +1,16 @@
 import { stanLanguage } from './stan-lang';
-import { INotebookTracker, NotebookPanel } from '@jupyterlab/notebook';
-import { CodeCell, Cell } from '@jupyterlab/cells';
+
+// @ts-ignore
+import { INotebookTracker } from '@jupyterlab/notebook';
+// @ts-ignore  
+import { CodeCell } from '@jupyterlab/cells';
+// @ts-ignore
 import { EditorLanguageRegistry } from '@jupyterlab/codemirror';
-import { JupyterFrontEnd, JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 /**
  * Register Stan file type
  */
-function registerStanFileType(app: JupyterFrontEnd): void {
+function registerStanFileType(app: any): void {
   app.docRegistry.addFileType({
     name: 'stan',
     displayName: 'Stan',
@@ -19,7 +22,7 @@ function registerStanFileType(app: JupyterFrontEnd): void {
 /**
  * Check if a cell starts with %%stan magic command
  */
-function isStanCell(cell: CodeCell | null): boolean {
+function isStanCell(cell: any): boolean {
   if (!cell || !(cell instanceof CodeCell)) return false;
 
   const source = cell.model.sharedModel.getSource();
@@ -30,7 +33,7 @@ function isStanCell(cell: CodeCell | null): boolean {
 /**
  * Apply Stan highlighting to a cell
  */
-function applyStanHighlighting(cell: CodeCell): void {
+function applyStanHighlighting(cell: any): void {
   if (!isStanCell(cell)) return;
 
   try {
@@ -47,10 +50,10 @@ function applyStanHighlighting(cell: CodeCell): void {
 /**
  * Process all cells in a notebook
  */
-function processNotebook(notebook: NotebookPanel | null): void {
+function processNotebook(notebook: any): void {
   if (!notebook) return;
 
-  notebook.content.widgets.forEach((cell) => {
+  notebook.content.widgets.forEach((cell: any) => {
     if (cell instanceof CodeCell) {
       applyStanHighlighting(cell);
     }
@@ -60,15 +63,15 @@ function processNotebook(notebook: NotebookPanel | null): void {
 /**
  * JupyterLab extension definition
  */
-const extension: JupyterFrontEndPlugin<void> = {
+const extension: any = {
   id: 'jupyterlab-stan-highlight',
   autoStart: true,
   requires: [INotebookTracker],
   optional: [EditorLanguageRegistry],
   activate: function (
-    app: JupyterFrontEnd,
-    tracker: INotebookTracker,
-    languageRegistry?: EditorLanguageRegistry
+    app: any,
+    tracker: any,
+    languageRegistry?: any
   ): void {
     console.log('JupyterLab extension jupyterlab-stan-highlight is activated!');
 
@@ -81,12 +84,12 @@ const extension: JupyterFrontEndPlugin<void> = {
         name: 'stan',
         mime: 'text/x-stan',
         extensions: ['stan'],
-        load: () => Promise.resolve(stanLanguage)
+        load: () => Promise.resolve(stanLanguage as any)
       });
     }
 
     // Process notebooks when they change
-    tracker.currentChanged.connect((tracker, notebook) => {
+    tracker.currentChanged.connect((tracker: any, notebook: any) => {
       if (notebook) {
         notebook.revealed.then(() => {
           processNotebook(notebook);
@@ -95,14 +98,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     });
 
     // Process active cell when it changes
-    tracker.activeCellChanged.connect((tracker, activeCell) => {
+    tracker.activeCellChanged.connect((tracker: any, activeCell: any) => {
       if (activeCell instanceof CodeCell) {
         applyStanHighlighting(activeCell);
       }
     });
 
     // Process new notebooks
-    tracker.widgetAdded.connect((tracker, notebook) => {
+    tracker.widgetAdded.connect((tracker: any, notebook: any) => {
       notebook.revealed.then(() => {
         processNotebook(notebook);
       });
