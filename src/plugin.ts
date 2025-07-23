@@ -8,15 +8,18 @@ import { CodeCell } from '@jupyterlab/cells';
 import { EditorLanguageRegistry } from '@jupyterlab/codemirror';
 
 /**
- * Register Stan file type
+ * Register Stan file type and language
  */
 function registerStanFileType(app: any): void {
+  // Register file type
   app.docRegistry.addFileType({
     name: 'stan',
     displayName: 'Stan',
     extensions: ['stan'],
     mimeTypes: ['text/x-stan'],
   });
+
+  console.log('Stan file type registered');
 }
 
 /**
@@ -37,29 +40,56 @@ function applyStanHighlighting(cell: any): void {
   if (!isStanCell(cell)) return;
 
   try {
+    console.log('Applying Stan highlighting to cell');
+
+    // Set the MIME type
+    cell.model.mimeType = 'text/x-stan';
+
     const editor = cell.editor;
-    if (editor) {
-      // Force the editor to use Stan mode
+    if (editor && editor.editor) {
       const editorView = editor.editor;
-      if (editorView && editorView.dispatch) {
-        // Try to change the language mode
-        console.log('Applying Stan highlighting to cell');
 
-        // Set MIME type
-        cell.model.mimeType = 'text/x-stan';
+      // For CodeMirror 6, try to reconfigure with Stan language
+      if (editorView.dispatch && editorView.state) {
+        try {
+          // Create a transaction to change the language
+          const transaction = editorView.state.update({
+            effects: [
+              // Try to apply the language configuration
+              editorView.state.reconfigure({
+                language: stanLanguage
+              })
+            ]
+          });
 
-        // Try to reconfigure the editor
-        if (editor.setOption) {
-          editor.setOption('mode', 'text/x-stan');
+          editorView.dispatch(transaction);
+          console.log('Stan language transaction dispatched');
+
+        } catch (configError) {
+          console.warn('Failed to reconfigure editor with transaction:', configError);
+
+          // Alternative approach: force editor refresh
+          try {
+            if (editor.refresh) {
+              editor.refresh();
+            }
+            // Try to trigger a re-render
+            setTimeout(() => {
+              if (editor.focus) {
+                editor.focus();
+                editor.blur();
+              }
+            }, 100);
+          } catch (refreshError) {
+            console.warn('Failed to refresh editor:', refreshError);
+          }
         }
       }
     }
   } catch (error) {
     console.warn('Failed to apply Stan highlighting:', error);
   }
-}
-
-/**
+}/**
  * Process all cells in a notebook
  */
 function processNotebook(notebook: any): void {
@@ -86,25 +116,42 @@ const extension: any = {
     languageRegistry?: any
   ): void {
     console.log('JupyterLab extension jupyterlab-stan-highlight is activated!');
+    console.log('Available language registry:', !!languageRegistry);
+    console.log('Stan language definition:', stanLanguage);
 
     // Register Stan file type
     registerStanFileType(app);
 
-    // Register Stan language
+    // Register Stan language with multiple approaches
     if (languageRegistry) {
       try {
+        // Method 1: Standard registration
         languageRegistry.addLanguage({
           name: 'stan',
           mime: 'text/x-stan',
           extensions: ['stan'],
           load: async () => {
+            console.log('Loading Stan language definition');
             return stanLanguage as any;
           }
         });
+
+        // Method 2: Try to register with additional mimes
+        languageRegistry.addLanguage({
+          name: 'stan-alt',
+          mime: 'text/stan',
+          extensions: ['stan'],
+          load: async () => {
+            return stanLanguage as any;
+          }
+        });
+
         console.log('Stan language registered successfully');
       } catch (error) {
         console.warn('Failed to register Stan language:', error);
       }
+    } else {
+      console.warn('Language registry not available');
     }
 
     // Function to check and apply highlighting to all cells
