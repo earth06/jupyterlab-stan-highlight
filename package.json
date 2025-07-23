@@ -1,5 +1,5 @@
 {
-  "name": "jupyterlab4-stan-highlight",
+  "name": "jupyterlab-stan-highlight",
   "version": "0.4.0",
   "description": "Jupyterlab extension to highlight Stan syntax",
   "author": "Oonishi Takato",
