@@ -16,7 +16,7 @@
   },
   "jupyterlab": {
     "extension": true,
-    "outputDir": "static"
+    "outputDir": "jupyterlab_stan_highlight/labextension"
   },
   "scripts": {
     "build": "jlpm build:lib && jlpm build:labextension:dev",

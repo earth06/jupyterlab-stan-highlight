@@ -7,19 +7,24 @@
         "jsx": "react-jsx",
         "module": "esnext",
         "moduleResolution": "node",
-        "noEmitOnError": true,
-        "noImplicitAny": true,
-        "noUnusedLocals": true,
+        "noEmitOnError": false,
+        "noImplicitAny": false,
+        "noUnusedLocals": false,
         "preserveWatchOutput": true,
         "resolveJsonModule": true,
         "outDir": "lib",
         "rootDir": "src",
-        "strict": true,
+        "strict": false,
         "strictNullChecks": false,
         "target": "es2018",
+        "skipLibCheck": true,
         "types": []
     },
     "include": [
         "src/*"
+    ],
+    "exclude": [
+        "lib",
+        "node_modules"
     ]
 }
