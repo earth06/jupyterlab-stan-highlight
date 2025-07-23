@@ -5,7 +5,7 @@ import { INotebookTracker } from '@jupyterlab/notebook';
 // @ts-ignore  
 import { CodeCell } from '@jupyterlab/cells';
 // @ts-ignore
-import { EditorLanguageRegistry } from '@jupyterlab/codemirror';
+import { IEditorLanguageRegistry } from '@jupyterlab/codemirror';
 
 /**
  * Register Stan file type and language
@@ -46,45 +46,56 @@ function applyStanHighlighting(cell: any): void {
     cell.model.mimeType = 'text/x-stan';
 
     const editor = cell.editor;
-    if (editor && editor.editor) {
-      const editorView = editor.editor;
+    if (editor) {
+      // Method 1: Try to use JupyterLab's language switching
+      try {
+        if (editor.model && editor.model.mimeType !== 'text/x-stan') {
+          editor.model.mimeType = 'text/x-stan';
+          console.log('Set MIME type to text/x-stan');
+        }
+      } catch (mimeError) {
+        console.warn('Failed to set MIME type:', mimeError);
+      }
 
-      // For CodeMirror 6, try to reconfigure with Stan language
-      if (editorView.dispatch && editorView.state) {
+      // Method 2: Try CodeMirror 6 reconfiguration (safer approach)
+      if (editor.editor && editor.editor.state) {
         try {
-          // Create a transaction to change the language
-          const transaction = editorView.state.update({
-            effects: [
-              // Try to apply the language configuration
-              editorView.state.reconfigure({
-                language: stanLanguage
-              })
-            ]
-          });
+          const editorView = editor.editor;
 
-          editorView.dispatch(transaction);
-          console.log('Stan language transaction dispatched');
+          // Check if we can access the state configuration
+          if (editorView.state && editorView.state.facet) {
+            // This is a safer way to work with CodeMirror 6
+            console.log('CodeMirror 6 editor detected, attempting language change');
 
-        } catch (configError) {
-          console.warn('Failed to reconfigure editor with transaction:', configError);
-
-          // Alternative approach: force editor refresh
-          try {
+            // Try to force a refresh instead of reconfiguration
             if (editor.refresh) {
               editor.refresh();
+              console.log('Editor refreshed');
             }
-            // Try to trigger a re-render
-            setTimeout(() => {
-              if (editor.focus) {
-                editor.focus();
-                editor.blur();
-              }
-            }, 100);
-          } catch (refreshError) {
-            console.warn('Failed to refresh editor:', refreshError);
+
+            // Alternative: dispatch a simple update
+            if (editorView.dispatch) {
+              editorView.dispatch({
+                changes: { from: 0, to: 0, insert: '' }
+              });
+            }
           }
+        } catch (configError) {
+          console.warn('CodeMirror configuration failed:', configError);
         }
       }
+
+      // Method 3: Force editor to re-evaluate content
+      setTimeout(() => {
+        try {
+          if (editor.focus && editor.blur) {
+            editor.focus();
+            editor.blur();
+          }
+        } catch (focusError) {
+          console.warn('Focus/blur failed:', focusError);
+        }
+      }, 100);
     }
   } catch (error) {
     console.warn('Failed to apply Stan highlighting:', error);
@@ -109,7 +120,7 @@ const extension: any = {
   id: 'jupyterlab-stan-highlight',
   autoStart: true,
   requires: [INotebookTracker],
-  optional: [EditorLanguageRegistry],
+  optional: [IEditorLanguageRegistry],
   activate: function (
     app: any,
     tracker: any,
@@ -117,44 +128,67 @@ const extension: any = {
   ): void {
     console.log('JupyterLab extension jupyterlab-stan-highlight is activated!');
     console.log('Available language registry:', !!languageRegistry);
+    console.log('Language registry type:', typeof languageRegistry);
     console.log('Stan language definition:', stanLanguage);
+    console.log('App object:', app);
 
     // Register Stan file type
     registerStanFileType(app);
 
-    // Register Stan language with multiple approaches
+    // Register Stan language with enhanced error handling
+    console.log('Attempting to register Stan language...');
+
     if (languageRegistry) {
       try {
-        // Method 1: Standard registration
-        languageRegistry.addLanguage({
+        // Try the standard approach
+        const registration = {
           name: 'stan',
           mime: 'text/x-stan',
           extensions: ['stan'],
           load: async () => {
-            console.log('Loading Stan language definition');
-            return stanLanguage as any;
+            console.log('Loading Stan language definition for registration');
+            return stanLanguage;
           }
-        });
+        };
 
-        // Method 2: Try to register with additional mimes
-        languageRegistry.addLanguage({
-          name: 'stan-alt',
-          mime: 'text/stan',
-          extensions: ['stan'],
-          load: async () => {
-            return stanLanguage as any;
-          }
-        });
+        languageRegistry.addLanguage(registration);
+        console.log('Stan language registered successfully with IEditorLanguageRegistry');
 
-        console.log('Stan language registered successfully');
-      } catch (error) {
-        console.warn('Failed to register Stan language:', error);
+        // Try alternative MIME types as well
+        try {
+          languageRegistry.addLanguage({
+            name: 'stan-text',
+            mime: 'text/stan',
+            extensions: ['stan'],
+            load: async () => stanLanguage
+          });
+          console.log('Alternative Stan MIME type registered');
+        } catch (altError) {
+          console.warn('Alternative MIME registration failed:', altError);
+        }
+
+      } catch (registrationError) {
+        console.error('Failed to register Stan language:', registrationError);
       }
     } else {
-      console.warn('Language registry not available');
-    }
+      console.warn('Language registry not available - this may be normal in some JupyterLab configurations');
 
-    // Function to check and apply highlighting to all cells
+      // Fallback: try to access global language registry
+      try {
+        const globalRegistry = (window as any).jupyterlab?.languageRegistry;
+        if (globalRegistry) {
+          globalRegistry.addLanguage({
+            name: 'stan',
+            mime: 'text/x-stan',
+            extensions: ['stan'],
+            load: async () => stanLanguage
+          });
+          console.log('Stan language registered via global registry');
+        }
+      } catch (globalError) {
+        console.warn('Global registry fallback failed:', globalError);
+      }
+    }    // Function to check and apply highlighting to all cells
     const checkAllCells = (notebook: any) => {
       if (!notebook) return;
 
